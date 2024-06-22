@@ -67,15 +67,46 @@
         return dummy
     }
 
+    function get_css_rules(element) {
+        let styles = []
+        // Inline style has the highest priority
+        if (element.style.length) {
+            for (let i = 0; i < element.style.length; i++) {
+                const prop = element.style[i]
+                styles[prop] = element.style.getPropertyValue(prop)
+            }
+        }
+        // Get styles from CSS rules
+        for (let i = 0; i < document.styleSheets.length; i++) {
+            const sheet = document.styleSheets[i]
+            try {  // Avoid security errors from cross-origin stylesheets
+                Array.from(sheet.cssRules || []).forEach((rule) => {
+                    if (element.matches(rule.selectorText)) {
+                        Array.from(rule.style).forEach((prop) => {
+                            if (!styles[prop]) styles[prop] = rule.style.getPropertyValue(prop)
+                        })
+                    }
+                })
+            } catch (e) {
+                console.warn('Cannot access stylesheet: ' + sheet.href)
+            }
+        }
+        return styles
+    }
+
     function copy_css(e) {
         if (!e.target) return
+        console.log('copy_css', e.target)
         const dummy = create_dummy(e.target.tagName)
         const style = getComputedStyle(e.target)
+        const explicit_style = get_css_rules(e.target)
+        console.log('explicit_style', explicit_style)
         const dummy_style = getComputedStyle(dummy)
         let lines = []
         for (const property of style) {
             if (style.getPropertyValue(property) !== dummy_style.getPropertyValue(property)) {
-                lines.push(`    ${property}: ${style.getPropertyValue(property)};`)
+                if (explicit_style[property]) lines.push(`    ${property}: ${explicit_style[property]};`)
+                else lines.push(`    ${property}: ${style.getPropertyValue(property)};`)
             }
         }
         const text = `{\n${lines.join('\n')}\n}`
@@ -86,7 +117,6 @@
     }
 
     function on_keydown(e) {
-        console.log('on_keydown', e)
         if (e.ctrlKey && e.key === 'c') {
             copy_css({ target: $current })
             e.preventDefault()
@@ -100,7 +130,7 @@
         window.removeEventListener('resize', update_overlay, true)
         window.removeEventListener('mousemove', highlight_hovered)
         window.removeEventListener('click', copy_css)
-        document.removeEventListener('keydown', on_keydown)
+        window.removeEventListener('keydown', on_keydown)
         if ($overlay.parentNode) $overlay.parentNode.removeChild($overlay)
     }
 
@@ -108,5 +138,5 @@
     window.addEventListener('resize', update_overlay, true)
     window.addEventListener('mousemove', highlight_hovered)
     window.addEventListener('click', copy_css)
-    document.addEventListener('keydown', on_keydown)
+    window.addEventListener('keydown', on_keydown)
 })()
