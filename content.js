@@ -1,15 +1,21 @@
 (() => {
-    let is_active = false
-
-    // Create an overlay for highlighting elements
     const $overlay = document.createElement('div')
-    $overlay.style.position = 'absolute'
+
+    // @ts-ignore
+    if (window.is_css_extension_active) return deactivate()  // Check if the extension is already active
+    // @ts-ignore
+    window.is_css_extension_active = true
+
+    let $current = null
+    $overlay.style.position = 'fixed'
     $overlay.style.border = '2px solid red'
     $overlay.style.pointerEvents = 'none'
-    // $overlay.style.display = 'none'
-    $overlay.style.zIndex = '999999'
+    $overlay.style.zIndex = '2147483647'
     $overlay.style.transition = 'all 100ms ease-in-out'
-    document.body.appendChild($overlay)
+    $overlay.style.outline = '1px solid #fff'
+    $overlay.style.outlineOffset = '-2px'
+    $overlay.style.backgroundColor = 'rgba(255, 0, 0, 0.1)'
+    document.documentElement.appendChild($overlay)
 
     // Toast setup for notifications
     const $toast = document.createElement('div')
@@ -28,6 +34,7 @@
     document.body.appendChild($toast)
 
     function show_toast(message) {
+        console.log(message)
         $toast.textContent = message
         $toast.style.display = 'block'
         $toast.style.opacity = '1'
@@ -39,12 +46,18 @@
 
     function highlight_hovered(e) {
         if (!e.target) return
-        const rect = e.target.getBoundingClientRect()
-        if (!rect) return
-        $overlay.style.width = `${rect.width}px`
-        $overlay.style.height = `${rect.height}px`
-        $overlay.style.left = `${rect.left + window.scrollX}px`
-        $overlay.style.top = `${rect.top + window.scrollY}px`
+        $current = e.target
+        update_overlay()
+    }
+
+    function update_overlay() {
+        if ($current) {
+            const rect = $current.getBoundingClientRect()
+            $overlay.style.width = `${rect.width}px`
+            $overlay.style.height = `${rect.height}px`
+            $overlay.style.left = `${rect.left}px`
+            $overlay.style.top = `${rect.top}px`
+        }
     }
 
     function create_dummy(tag) {
@@ -66,28 +79,24 @@
             }
         }
         const text = `{\n${lines.join('\n')}\n}`
-        navigator.clipboard.writeText(text).then(() => {
-            console.log(text)
-            console.log('CSS copied to clipboard')
-            show_toast('CSS copied to clipboard')
-            chrome.runtime.sendMessage({ is_active: false })
-        })
+        navigator.clipboard.writeText(text).then(() => show_toast('CSS copied to clipboard'))
+        deactivate()
         e.preventDefault()
         e.stopImmediatePropagation()
-        deactivate()
     }
 
     function deactivate() {
+        // @ts-ignore
+        window.is_css_extension_active = false
+        window.removeEventListener('scroll', update_overlay, true)
+        window.removeEventListener('resize', update_overlay, true)
         document.removeEventListener('mousemove', highlight_hovered)
         document.removeEventListener('click', copy_css)
-        $overlay.style.display = 'none'
+        if ($overlay.parentNode) $overlay.parentNode.removeChild($overlay)
     }
 
-    // Listen for messages from the background script
-    chrome.runtime.onMessage.addListener((message,) => {
-        is_active = message.is_active
-        if (!is_active) return deactivate()
-        document.addEventListener('mousemove', highlight_hovered)
-        document.addEventListener('click', copy_css)
-    })
+    window.addEventListener('scroll', update_overlay, true)
+    window.addEventListener('resize', update_overlay, true)
+    document.addEventListener('mousemove', highlight_hovered)
+    document.addEventListener('click', copy_css)
 })()

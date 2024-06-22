@@ -4,7 +4,8 @@
     "manifest_version": 3,
     "permissions": [
         "activeTab",
-        "clipboardWrite"
+        "clipboardWrite",
+        "scripting"
     ],
     "icons": {
         "16": "icons/16.png",
@@ -17,11 +18,5 @@
     },
     "background": {
         "service_worker": "background.js"
-    },
-    "content_scripts": [
-        {
-            "matches": ["<all_urls>"],
-            "js": ["content.js"]
-        }
-    ]
+    }
 }
