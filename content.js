@@ -31,7 +31,7 @@
     $toast.style.display = 'none'
     $toast.style.zIndex = '10000'
     $toast.style.transition = 'opacity 0.5s'
-    document.body.appendChild($toast)
+    document.documentElement.appendChild($toast)
 
     function show_toast(message) {
         console.log(message)
@@ -81,8 +81,16 @@
         const text = `{\n${lines.join('\n')}\n}`
         navigator.clipboard.writeText(text).then(() => show_toast('CSS copied to clipboard'))
         deactivate()
-        e.preventDefault()
-        e.stopImmediatePropagation()
+        if (e.preventDefault) e.preventDefault()
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation()
+    }
+
+    function on_keydown(e) {
+        console.log('on_keydown', e)
+        if (e.ctrlKey && e.key === 'c') {
+            copy_css({ target: $current })
+            e.preventDefault()
+        }
     }
 
     function deactivate() {
@@ -90,13 +98,15 @@
         window.is_css_extension_active = false
         window.removeEventListener('scroll', update_overlay, true)
         window.removeEventListener('resize', update_overlay, true)
-        document.removeEventListener('mousemove', highlight_hovered)
-        document.removeEventListener('click', copy_css)
+        window.removeEventListener('mousemove', highlight_hovered)
+        window.removeEventListener('click', copy_css)
+        document.removeEventListener('keydown', on_keydown)
         if ($overlay.parentNode) $overlay.parentNode.removeChild($overlay)
     }
 
     window.addEventListener('scroll', update_overlay, true)
     window.addEventListener('resize', update_overlay, true)
-    document.addEventListener('mousemove', highlight_hovered)
-    document.addEventListener('click', copy_css)
+    window.addEventListener('mousemove', highlight_hovered)
+    window.addEventListener('click', copy_css)
+    document.addEventListener('keydown', on_keydown)
 })()
